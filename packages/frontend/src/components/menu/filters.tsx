@@ -2625,6 +2625,23 @@ function Content() {
                       }}
                     />
                   )}
+
+                  <NumberInput
+                    help="Limit for results by visual tag (DV, HDR, 10bit, etc). Uses your best preferred tag for each stream."
+                    label="Visual Tag Limit"
+                    value={userData.resultLimits?.visualTag || undefined}
+                    min={0}
+                    defaultValue={undefined}
+                    onValueChange={(value) => {
+                      setUserData((prev) => ({
+                        ...prev,
+                        resultLimits: {
+                          ...prev.resultLimits,
+                          visualTag: value || undefined,
+                        },
+                      }));
+                    }}
+                  />
                 </div>
               </SettingsCard>
             </>

@@ -74,6 +74,7 @@ const ResultLimitOptions = z.object({
   streamType: z.number().min(1).optional(),
   indexer: z.number().min(1).optional(),
   releaseGroup: z.number().min(1).optional(),
+  visualTag: z.number().min(1).optional(),
 });
 
 // const SizeFilter = z.object({

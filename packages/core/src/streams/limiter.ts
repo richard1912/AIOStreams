@@ -26,6 +26,7 @@ class StreamLimiter {
       addon,
       streamType,
       service,
+      visualTag,
     } = this.userData.resultLimits;
 
     const start = Date.now();
@@ -39,6 +40,7 @@ class StreamLimiter {
       addon: new Map<string, number>(),
       streamType: new Map<string, number>(),
       service: new Map<string, number>(),
+      visualTag: new Map<string, number>(),
       global: 0,
     };
 
@@ -133,6 +135,45 @@ class StreamLimiter {
           return;
         }
         counts.service.set(stream.service.id, count + 1);
+      }
+
+      // Check visual tag limit (combined with resolution for per-resolution limits)
+      if (visualTag) {
+        // Determine the best visual tag for this stream based on user preferences
+        const streamVisualTags = stream.parsedFile?.visualTags?.length
+          ? stream.parsedFile.visualTags
+          : ['Unknown'];
+
+        let bestTag = 'Unknown';
+        if (this.userData.preferredVisualTags?.length) {
+          // Find the best tag (lowest index in preferences)
+          let minIndex = this.userData.preferredVisualTags.length;
+          for (const tag of streamVisualTags) {
+            const idx = this.userData.preferredVisualTags.indexOf(tag as any);
+            if (idx !== -1 && idx < minIndex) {
+              minIndex = idx;
+              bestTag = tag;
+            }
+          }
+          // If no preferred tag found, use first tag from stream
+          if (bestTag === 'Unknown' && streamVisualTags[0] !== 'Unknown') {
+            bestTag = streamVisualTags[0];
+          }
+        } else {
+          // No preferences configured, use first tag
+          bestTag = streamVisualTags[0];
+        }
+
+        // Use combined resolution:visualTag key for per-resolution limits
+        const resolution = stream.parsedFile?.resolution || 'Unknown';
+        const combinedKey = `${resolution}:${bestTag}`;
+
+        const count = counts.visualTag.get(combinedKey) || 0;
+        if (count >= visualTag) {
+          indexesToRemove.add(index);
+          return;
+        }
+        counts.visualTag.set(combinedKey, count + 1);
       }
 
       // If we got here, increment global count
