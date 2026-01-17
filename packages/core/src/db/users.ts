@@ -373,18 +373,9 @@ export class UserRepository {
     encryptedConfig: string;
     salt: string;
   }> {
-    const { key, salt: saltUsed } = await deriveKey(
-      `${password}:${Env.SECRET_KEY}`,
-      salt
-    );
+    // ENCRYPTION DISABLED - store as plain JSON
     const configString = JSON.stringify(config);
-    const { success, data, error } = encryptString(configString, key);
-
-    if (!success) {
-      return Promise.reject(new APIError(constants.ErrorCode.ENCRYPTION_ERROR));
-    }
-
-    return { encryptedConfig: data, salt: saltUsed };
+    return { encryptedConfig: configString, salt: salt || 'none' };
   }
 
   private static async decryptConfig(
@@ -392,18 +383,19 @@ export class UserRepository {
     password: string,
     salt: string
   ): Promise<UserData> {
-    const { key } = await deriveKey(`${password}:${Env.SECRET_KEY}`, salt);
-    const {
-      success,
-      data: decryptedString,
-      error,
-    } = decryptString(encryptedConfig, key);
-
-    if (!success || !decryptedString) {
-      return Promise.reject(new APIError(constants.ErrorCode.ENCRYPTION_ERROR));
+    // ENCRYPTION DISABLED - configs are stored as plain JSON
+    // Try to parse directly first (new format)
+    try {
+      return JSON.parse(encryptedConfig);
+    } catch {
+      // If that fails, it might be old encrypted format - try to decrypt
+      const { key } = await deriveKey(`${password}:${Env.SECRET_KEY}`, salt);
+      const { success, data: decryptedString } = decryptString(encryptedConfig, key);
+      if (!success || !decryptedString) {
+        return Promise.reject(new APIError(constants.ErrorCode.ENCRYPTION_ERROR));
+      }
+      return JSON.parse(decryptedString);
     }
-
-    return JSON.parse(decryptedString);
   }
 
   private static async generateUUID(count: number = 1): Promise<string> {

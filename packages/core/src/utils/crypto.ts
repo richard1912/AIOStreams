@@ -72,36 +72,25 @@ type ErrorResponse = {
 export type Response = SuccessResponse | ErrorResponse;
 
 export function isEncrypted(data: string): boolean {
-  try {
-    // parse the data as json
-    const json = JSON.parse(fromUrlSafeBase64(data));
-    return ['aioEncrypt', 'a'].includes(json.type || json.t);
-  } catch (error) {
-    return false;
-  }
+  // Encryption disabled - always return false
+  return false;
 }
 
 /**
- * Encrypts a string using AES-256-CBC encryption, returns a string in the format "iv:encrypted" where
- * iv and encrypted are url encoded.
- * @param data Data to encrypt
- * @param secretKey Secret key used for encryption
- * @returns Encrypted data or error message
+ * Encrypts a string - ENCRYPTION DISABLED, just returns base64 encoded data
+ * @param data Data to "encrypt" (just base64 encode)
+ * @param secretKey Ignored
+ * @returns Base64 encoded data
  */
 export function encryptString(data: string, secretKey?: Buffer): Response {
-  if (!secretKey) {
-    secretKey = Buffer.from(Env.SECRET_KEY, 'hex');
-  }
   try {
-    const compressed = compressData(data);
-    const { i, d: e } = encryptData(secretKey, compressed);
     return {
       success: true,
-      data: toUrlSafeBase64(JSON.stringify({ i, e, t: 'a' })),
+      data: toUrlSafeBase64(data),
       error: null,
     };
   } catch (error: any) {
-    logger.error(`Failed to encrypt data: ${error.message}`);
+    logger.error(`Failed to encode data: ${error.message}`);
     return {
       success: false,
       error: error.message,
@@ -111,36 +100,41 @@ export function encryptString(data: string, secretKey?: Buffer): Response {
 }
 
 /**
- * Decrypts a string using AES-256-CBC encryption
- * @param data Encrypted data to decrypt
- * @param secretKey Secret key used for encryption
- * @returns Decrypted data or error message
+ * Decrypts a string - handles both old encrypted format and new plain format
+ * @param data Data to decrypt/decode
+ * @param secretKey Secret key for old encrypted data
+ * @returns Decrypted/decoded data
  */
 export function decryptString(data: string, secretKey?: Buffer): Response {
   if (!secretKey) {
     secretKey = Buffer.from(Env.SECRET_KEY, 'hex');
   }
   try {
-    if (!isEncrypted(data)) {
-      throw new Error('The data was not in an expected encrypted format');
+    // Check if it's old encrypted format
+    const decoded = fromUrlSafeBase64(data);
+    let json;
+    try {
+      json = JSON.parse(decoded);
+    } catch {
+      // Not JSON, return as-is (plain text)
+      return { success: true, data: decoded, error: null };
     }
-    const json = JSON.parse(fromUrlSafeBase64(data));
-    const iv = Buffer.from(json.iv || json.i, 'base64');
-    const encrypted = Buffer.from(json.encrypted || json.e, 'base64');
-    const decrypted = decryptData(secretKey, encrypted, iv);
-    const decompressed = decompressData(decrypted);
-    return {
-      success: true,
-      data: decompressed,
-      error: null,
-    };
+
+    // Check if it's the old encrypted format
+    if (json && (json.type === 'aioEncrypt' || json.t === 'a') && (json.iv || json.i) && (json.encrypted || json.e)) {
+      // Old encrypted format - decrypt it
+      const iv = Buffer.from(json.iv || json.i, 'base64');
+      const encrypted = Buffer.from(json.encrypted || json.e, 'base64');
+      const decrypted = decryptData(secretKey, encrypted, iv);
+      const decompressed = decompressData(decrypted);
+      return { success: true, data: decompressed, error: null };
+    }
+
+    // It's just regular JSON/data, return as-is
+    return { success: true, data: decoded, error: null };
   } catch (error: any) {
-    logger.error(`Failed to decrypt data: ${error.message}`);
-    return {
-      success: false,
-      error: error.message,
-      data: null,
-    };
+    logger.error(`Failed to decrypt/decode data: ${error.message}`);
+    return { success: false, error: error.message, data: null };
   }
 }
 
