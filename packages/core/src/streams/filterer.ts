@@ -402,6 +402,9 @@ class StreamFilterer {
     }
 
     const applyDigitalReleaseFilter = () => {
+      // HARD DISABLED: Digital release filter completely disabled to allow all recently released content
+      return true;
+      /* ORIGINAL CODE DISABLED:
       const digitalReleaseFilterConfig = this.userData.digitalReleaseFilter;
       logger.debug(`[DigitalReleaseFilter] Checking filter for ${id}`, {
         enabled: digitalReleaseFilterConfig?.enabled,
@@ -580,6 +583,7 @@ class StreamFilterer {
         { daysSinceRelease }
       );
       return false;
+      END ORIGINAL CODE DISABLED */
     };
 
     const performTitleMatch = (stream: ParsedStream) => {

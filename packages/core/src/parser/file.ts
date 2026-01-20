@@ -8,6 +8,34 @@ function matchPattern(
   filename: string,
   patterns: Record<string, RegExp>
 ): string | undefined {
+  // For resolutions, prefer explicit patterns (1080p, 2160p, etc.) over generic ones (UHD, FHD)
+  const explicitResolutionPatterns = /\b(144p|240p|360p|480p|576p|720p|1080p|1440p|2160p|4k|8k)\b/i;
+  const explicitMatch = explicitResolutionPatterns.exec(filename);
+
+  if (explicitMatch) {
+    const matched = explicitMatch[0].toLowerCase();
+    // Map the matched explicit resolution
+    if (matched === '4k') return '2160p';
+    if (matched === '8k') return '4320p';
+    if (patterns[matched]) return matched;
+    // Try to find the pattern that includes this explicit match
+    for (const [key, pattern] of Object.entries(patterns)) {
+      if (pattern.test(filename)) {
+        // Check if this pattern would match our explicit resolution
+        if (key === '2160p' && (matched === '4k' || matched === '2160p')) return key;
+        if (key === '1080p' && matched === '1080p') return key;
+        if (key === '720p' && matched === '720p') return key;
+        if (key === '1440p' && matched === '1440p') return key;
+        if (key === '480p' && matched === '480p') return key;
+        if (key === '576p' && matched === '576p') return key;
+        if (key === '360p' && matched === '360p') return key;
+        if (key === '240p' && matched === '240p') return key;
+        if (key === '144p' && matched === '144p') return key;
+      }
+    }
+  }
+
+  // Fall back to default pattern matching for generic keywords
   return Object.entries(patterns).find(([_, pattern]) =>
     pattern.test(filename)
   )?.[0];

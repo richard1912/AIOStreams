@@ -12,7 +12,10 @@ class StreamLimiter {
   }
 
   public async limit(streams: ParsedStream[]): Promise<ParsedStream[]> {
+    logger.info(`[LIMITER] CALLED with ${streams.length} streams`);
+    logger.info(`[LIMITER] resultLimits: ${JSON.stringify(this.userData.resultLimits)}`);
     if (!this.userData.resultLimits) {
+      logger.debug(`[LIMITER] No result limits configured, skipping`);
       return streams;
     }
 
@@ -28,6 +31,8 @@ class StreamLimiter {
       service,
       visualTag,
     } = this.userData.resultLimits;
+
+    logger.debug(`[LIMITER] visualTag limit: ${visualTag}`);
 
     const start = Date.now();
 
@@ -164,12 +169,33 @@ class StreamLimiter {
           bestTag = streamVisualTags[0];
         }
 
-        // Use combined resolution:visualTag key for per-resolution limits
+        // Normalize related visual tags to group them together for limiting
+        // For example, HDR+DV, DV, DV Only all count toward the same "DV" limit
+        let normalizedTag = bestTag;
+        if (streamVisualTags.some((tag) => tag.includes('DV'))) {
+          // Any DV variant (HDR+DV, DV, DV Only, etc.) normalizes to "DV"
+          normalizedTag = 'DV';
+        } else if (bestTag === 'HDR10+' || streamVisualTags.includes('HDR10+')) {
+          // Keep HDR10+ separate from HDR10
+          normalizedTag = 'HDR10+';
+        } else if (bestTag === 'HDR10' || streamVisualTags.includes('HDR10')) {
+          // Keep HDR10 as-is
+          normalizedTag = 'HDR10';
+        } else if (bestTag === 'HDR' || streamVisualTags.includes('HDR')) {
+          normalizedTag = 'HDR';
+        }
+        // For other tags (10bit, IMAX, AI, Unknown), use bestTag as-is
+
+        logger.debug(`[LIMITER] Stream ${index}: filename=${stream.filename} visualTags=${JSON.stringify(streamVisualTags)} bestTag=${bestTag} normalizedTag=${normalizedTag}`);
+
+        // Use combined resolution:normalizedTag key for per-resolution limits
         const resolution = stream.parsedFile?.resolution || 'Unknown';
-        const combinedKey = `${resolution}:${bestTag}`;
+        const combinedKey = `${resolution}:${normalizedTag}`;
 
         const count = counts.visualTag.get(combinedKey) || 0;
+        logger.debug(`[LIMITER] Check: ${combinedKey} count=${count} limit=${visualTag}`);
         if (count >= visualTag) {
+          logger.debug(`[LIMITER] Removing stream ${index} - limit exceeded for ${combinedKey}`);
           indexesToRemove.add(index);
           return;
         }

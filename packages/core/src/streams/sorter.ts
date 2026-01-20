@@ -18,6 +18,7 @@ class StreamSorter {
     allStreams: ParsedStream[],
     type: string
   ): Promise<ParsedStream[]> {
+    logger.info(`[SORTER] CALLED with ${allStreams.length} streams for type=${type}`);
     const forcedToTopStreams = allStreams.filter(
       (stream) => stream.addon.forceToTop
     );

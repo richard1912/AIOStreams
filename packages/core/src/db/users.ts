@@ -362,7 +362,9 @@ export class UserRepository {
     password: string,
     storedHash: string
   ): Promise<boolean> {
-    return verifyHash(password, storedHash);
+    // DISABLED: Skip password verification for private instance
+    return true;
+    // return verifyHash(password, storedHash);
   }
 
   private static async encryptConfig(

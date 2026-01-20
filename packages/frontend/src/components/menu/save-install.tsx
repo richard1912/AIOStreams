@@ -86,7 +86,7 @@ function Content() {
     encryptedPassword,
     setEncryptedPassword,
   } = useUserData();
-  const [newPassword, setNewPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('mash4077'); // Password verification disabled
   const [loading, setLoading] = React.useState(false);
   const [passwordRequirements, setPasswordRequirements] = React.useState<
     string[]
@@ -390,35 +390,7 @@ function Content() {
             description="Set up your personalised addon configuration"
           >
             <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                {passwordRequirements.length > 0 && newPassword?.length > 0 && (
-                  <Alert
-                    intent="alert"
-                    title="Password Requirements"
-                    description={
-                      <ul className="list-disc list-inside">
-                        {passwordRequirements.map((requirement) => (
-                          <li key={requirement}>{requirement}</li>
-                        ))}
-                      </ul>
-                    }
-                  />
-                )}
-                <PasswordInput
-                  label="Password"
-                  id="password"
-                  value={newPassword}
-                  onValueChange={(value) => setNewPassword(value)}
-                  placeholder="Enter a password to protect your configuration"
-                  required
-                  autoComplete="new-password"
-                />
-                <p className="text-sm text-[--muted] mt-1">
-                  This is the password you will use to access and update your
-                  configuration later. You cannot change this or reset the
-                  password once set, so please choose wisely, and remember it.
-                </p>
-              </div>
+              {/* Password field hidden - verification disabled for private instance */}
               <Button intent="white" type="submit" loading={loading} rounded>
                 Create
               </Button>

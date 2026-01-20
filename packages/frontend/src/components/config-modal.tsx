@@ -23,17 +23,14 @@ export function ConfigModal({
   const { setUserData, setUuid, setPassword, setEncryptedPassword } =
     useUserData();
   const [uuid, setUuidInput] = React.useState(initialUuid || '');
-  const [password, setPasswordInput] = React.useState('');
+  const [password] = React.useState('mash4077'); // Password verification disabled
   const [loading, setLoading] = React.useState(false);
+  const [autoLoaded, setAutoLoaded] = React.useState(false);
 
-  console.log(`received initialUuid: ${initialUuid}`);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const loadConfig = async (targetUuid: string) => {
     setLoading(true);
-
     try {
-      const result = await UserConfigAPI.loadConfig(uuid, password);
+      const result = await UserConfigAPI.loadConfig(targetUuid, password);
 
       if (!result.success || !result.data) {
         toast.error(result.error?.message || 'Failed to load configuration');
@@ -42,9 +39,9 @@ export function ConfigModal({
 
       setUserData((prev) => ({
         ...prev,
-        ...result.data!.config, // we just checked that this is not null
+        ...result.data!.config,
       }));
-      setUuid(uuid);
+      setUuid(targetUuid);
       setPassword(password);
       setEncryptedPassword(result.data.encryptedPassword);
       onSuccess();
@@ -57,10 +54,18 @@ export function ConfigModal({
     }
   };
 
-  // Reset form when modal opens/closes
+  // Auto-load when initialUuid is provided and modal opens
+  React.useEffect(() => {
+    if (open && initialUuid && !autoLoaded) {
+      setAutoLoaded(true);
+      loadConfig(initialUuid);
+    }
+  }, [open, initialUuid, autoLoaded]);
+
+  // Reset autoLoaded flag when modal closes
   React.useEffect(() => {
     if (!open) {
-      setPasswordInput('');
+      setAutoLoaded(false);
     }
   }, [open]);
 
@@ -73,9 +78,19 @@ export function ConfigModal({
     }
   }, [initialUuid]);
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await loadConfig(uuid);
+  };
+
   const handleCancel = () => {
     onOpenChange(false);
   };
+
+  // Don't show modal if auto-loading with initialUuid
+  if (initialUuid && loading) {
+    return null;
+  }
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} title="Load Configuration">
@@ -89,14 +104,7 @@ export function ConfigModal({
           required
           disabled={!!initialUuid}
         />
-        <PasswordInput
-          label="Password"
-          id="password"
-          value={password}
-          onValueChange={(value) => setPasswordInput(value)}
-          placeholder="Enter your configuration password"
-          required
-        />
+        {/* Password field hidden - verification disabled for private instance */}
         <div className="flex justify-end gap-2">
           <Button type="button" onClick={handleCancel}>
             Cancel
